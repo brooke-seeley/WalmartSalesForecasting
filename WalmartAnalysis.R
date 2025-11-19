@@ -15,23 +15,43 @@ features <- vroom('features.csv') %>%
   mutate(Store = factor(Store))
 
 ## EDA
+#####
+# 
+# ### Features Data
+# 
+# head(features)
+# 
+# ### Unemployment Rate
+# 
+# gplot(features, mapping=aes(x=Date, y=Unemployment)) + geom_point()
+# 
+# ### The Stores
+# 
+# stores_to_predict <- interaction(testData$Store, testData$Dept)
+# levels(stores_to_predict)
+# 
+# stores_we_have <- interaction(trainData$Store, trainData$Dept)
+# levels(stores_we_have)
+# 
+# unique_to_predict <- setdiff(as.character(stores_to_predict), 
+#                              as.character(stores_we_have))
+# unique_to_predict
+# 
+# #####
+#
+## Data Cleaning
+#####
 
-### Features Data
+features <- features %>%
+  mutate(across(c(MarkDown1, MarkDown2, MarkDown3, MarkDown4, MarkDown5), ~
+                  replace_na(.x, 0))) %>%
+  mutate(TotalMarkdown = MarkDown1 + MarkDown2 + MarkDown3 + 
+           MarkDown4 + MarkDown5) %>%
+  mutate(MarkdownFlag = ifelse(TotalMarkdown > 0, 1, 0)) %>%
+  select(-MarkDown1, -MarkDown2, -MarkDown3, -MarkDown4, -MarkDown5)
 
-head(features)
+trainData <- left_join(trainData, features, by=c("Store", "Date"))
 
-### Unemployment Rate
+testData <- left_join(testData, features, by=c("Store", "Date"))
 
-gplot(features, mapping=aes(x=Date, y=Unemployment)) + geom_point()
-
-### The Stores
-
-stores_to_predict <- interaction(testData$Store, testData$Dept)
-levels(stores_to_predict)
-
-stores_we_have <- interaction(trainData$Store, trainData$Dept)
-levels(stores_we_have)
-
-unique_to_predict <- setdiff(as.character(stores_to_predict), 
-                             as.character(stores_we_have))
-unique_to_predict
+#####
