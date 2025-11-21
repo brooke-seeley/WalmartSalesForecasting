@@ -77,149 +77,208 @@ testData <- left_join(testData, imputed_features, by=c("Store", "Date")) %>%
 
 ## Store-Department Combos for Testing
 #####
-
-combo1_1 <- trainData %>%
-  filter(Store == '1', Dept == '1')
-  
-combo30_60 <- trainData %>%
-  filter(Store == '30', Dept == '60')
-  
-combo23_32 <- trainData %>%
-  filter(Store == '23', Dept == '32')
-
+# 
+# combo1_1 <- trainData %>%
+#   filter(Store == '1', Dept == '1')
+#   
+# combo30_60 <- trainData %>%
+#   filter(Store == '30', Dept == '60')
+#   
+# combo23_32 <- trainData %>%
+#   filter(Store == '23', Dept == '32')
+# 
 #####
 
 ## Recipes for Testing
 #####
-
-walmart_recipe <- recipe(Weekly_Sales~., data=combo1_1) %>%
-  step_date(Date, features="week") %>%
-  step_range(Date_week, min=0, max=pi) %>%
-  step_mutate(sinweek=sin(Date_week), cosweek=cos(Date_week)) %>%
-  step_rm(Date) %>%
-  step_normalize(all_numeric_predictors())
-
-prepped_recipe <- prep(walmart_recipe)
-bake(prepped_recipe, new_data = combo1_1)
-
-walmart_recipe <- recipe(Weekly_Sales~., data=combo30_60) %>%
-  step_date(Date, features="week") %>%
-  step_range(Date_week, min=0, max=pi) %>%
-  step_mutate(sinweek=sin(Date_week), cosweek=cos(Date_week)) %>%
-  step_rm(Date) %>%
-  step_normalize(all_numeric_predictors())
-
-prepped_recipe <- prep(walmart_recipe)
-bake(prepped_recipe, new_data = combo30_60)
-
-walmart_recipe <- recipe(Weekly_Sales~., data=combo23_32) %>%
-  step_date(Date, features="week") %>%
-  step_range(Date_week, min=0, max=pi) %>%
-  step_mutate(sinweek=sin(Date_week), cosweek=cos(Date_week)) %>%
-  step_rm(Date) %>%
-  step_normalize(all_numeric_predictors())
-
-prepped_recipe <- prep(walmart_recipe)
-bake(prepped_recipe, new_data = combo23_32)
-
+# 
+# walmart_recipe <- recipe(Weekly_Sales~., data=combo1_1) %>%
+#   step_date(Date, features="week") %>%
+#   step_range(Date_week, min=0, max=pi) %>%
+#   step_mutate(sinweek=sin(Date_week), cosweek=cos(Date_week)) %>%
+#   step_rm(Date) %>%
+#   step_normalize(all_numeric_predictors())
+# 
+# prepped_recipe <- prep(walmart_recipe)
+# bake(prepped_recipe, new_data = combo1_1)
+# 
+# walmart_recipe <- recipe(Weekly_Sales~., data=combo30_60) %>%
+#   step_date(Date, features="week") %>%
+#   step_range(Date_week, min=0, max=pi) %>%
+#   step_mutate(sinweek=sin(Date_week), cosweek=cos(Date_week)) %>%
+#   step_rm(Date) %>%
+#   step_normalize(all_numeric_predictors())
+# 
+# prepped_recipe <- prep(walmart_recipe)
+# bake(prepped_recipe, new_data = combo30_60)
+# 
+# walmart_recipe <- recipe(Weekly_Sales~., data=combo23_32) %>%
+#   step_date(Date, features="week") %>%
+#   step_range(Date_week, min=0, max=pi) %>%
+#   step_mutate(sinweek=sin(Date_week), cosweek=cos(Date_week)) %>%
+#   step_rm(Date) %>%
+#   step_normalize(all_numeric_predictors())
+# 
+# prepped_recipe <- prep(walmart_recipe)
+# bake(prepped_recipe, new_data = combo23_32)
+# 
 #####
 
 ## Random Forest - 1;1: 7404, 30;60: 169, 23;32: 2988
 #####
-
-rand_for <- rand_forest(mtry = tune(),
-                        min_n=tune(),
-                        trees=1000) %>%
-  set_engine("ranger") %>%
-  set_mode("regression")
-
-walmart_workflow <- workflow() %>%
-  add_recipe(walmart_recipe) %>%
-  add_model(rand_for)
-
-grid_of_tuning_params <- grid_regular(mtry(range=c(1,9)),
-                                      min_n(),
-                                      levels=5)
-
-folds <- vfold_cv(combo1_1, v = 10, repeats=1)
-
-folds <- vfold_cv(combo30_60, v = 10, repeats=1)
-
-folds <- vfold_cv(combo23_32, v = 10, repeats=1)
-
-CV_results <- walmart_workflow %>%
-  tune_grid(resamples=folds,
-            grid=grid_of_tuning_params,
-            metrics=metric_set(rmse))
-
-CV_results %>%
-  show_best(metric = "rmse", n = 1)
-
+# 
+# rand_for <- rand_forest(mtry = tune(),
+#                         min_n=tune(),
+#                         trees=1000) %>%
+#   set_engine("ranger") %>%
+#   set_mode("regression")
+# 
+# walmart_workflow <- workflow() %>%
+#   add_recipe(walmart_recipe) %>%
+#   add_model(rand_for)
+# 
+# grid_of_tuning_params <- grid_regular(mtry(range=c(1,9)),
+#                                       min_n(),
+#                                       levels=5)
+# 
+# folds <- vfold_cv(combo1_1, v = 10, repeats=1)
+# 
+# folds <- vfold_cv(combo30_60, v = 10, repeats=1)
+# 
+# folds <- vfold_cv(combo23_32, v = 10, repeats=1)
+# 
+# CV_results <- walmart_workflow %>%
+#   tune_grid(resamples=folds,
+#             grid=grid_of_tuning_params,
+#             metrics=metric_set(rmse))
+# 
+# CV_results %>%
+#   show_best(metric = "rmse", n = 1)
+# 
 #####
 
 ## Boosted Trees - 1;1: 8088, 30;60: 175, 23;32: 3366
 #####
-
-library(bonsai)
-library(lightgbm)
-
-boost_model <- boost_tree(tree_depth=tune(),
-                          trees=tune(),
-                          learn_rate=tune()) %>%
-  set_engine("lightgbm") %>%
-  set_mode("regression")
-
-walmart_workflow <- workflow() %>%
-  add_recipe(walmart_recipe) %>%
-  add_model(boost_model)
-
-grid_of_tuning_params <- grid_regular(tree_depth(),
-                                      trees(),
-                                      learn_rate(),
-                                      levels=5)
-
-folds <- vfold_cv(combo1_1, v = 10, repeats=1)
-
-folds <- vfold_cv(combo30_60, v = 10, repeats=1)
-
-folds <- vfold_cv(combo23_32, v = 10, repeats=1)
-
-CV_results <- walmart_workflow %>%
-  tune_grid(resamples=folds,
-            grid=grid_of_tuning_params,
-            metrics=metric_set(rmse))
-
-CV_results %>%
-  show_best(metric = "rmse", n = 1)
-
+# 
+# library(bonsai)
+# library(lightgbm)
+# 
+# boost_model <- boost_tree(tree_depth=tune(),
+#                           trees=tune(),
+#                           learn_rate=tune()) %>%
+#   set_engine("lightgbm") %>%
+#   set_mode("regression")
+# 
+# walmart_workflow <- workflow() %>%
+#   add_recipe(walmart_recipe) %>%
+#   add_model(boost_model)
+# 
+# grid_of_tuning_params <- grid_regular(tree_depth(),
+#                                       trees(),
+#                                       learn_rate(),
+#                                       levels=5)
+# 
+# folds <- vfold_cv(combo1_1, v = 10, repeats=1)
+# 
+# folds <- vfold_cv(combo30_60, v = 10, repeats=1)
+# 
+# folds <- vfold_cv(combo23_32, v = 10, repeats=1)
+# 
+# CV_results <- walmart_workflow %>%
+#   tune_grid(resamples=folds,
+#             grid=grid_of_tuning_params,
+#             metrics=metric_set(rmse))
+# 
+# CV_results %>%
+#   show_best(metric = "rmse", n = 1)
+# 
 #####
 
 ## BART - 1;1: 7932, 30;60: 162, 23;32: 2469
 #####
-
-bart_model <- bart(trees=tune()) %>% 
-  set_engine("dbarts") %>%
-  set_mode("regression")
-
-walmart_workflow <- workflow() %>%
-  add_recipe(walmart_recipe) %>%
-  add_model(bart_model)
-
-grid_of_tuning_params <- grid_regular(trees(),
-                                      levels=5)
-
-folds <- vfold_cv(combo1_1, v = 10, repeats=1)
-
-folds <- vfold_cv(combo30_60, v = 10, repeats=1)
-
-folds <- vfold_cv(combo23_32, v = 10, repeats=1)
-
-CV_results <- walmart_workflow %>%
-  tune_grid(resamples=folds,
-            grid=grid_of_tuning_params,
-            metrics=metric_set(rmse))
-
-CV_results %>%
-  show_best(metric = "rmse", n = 1)
-
+# 
+# bart_model <- bart(trees=tune()) %>% 
+#   set_engine("dbarts") %>%
+#   set_mode("regression")
+# 
+# walmart_workflow <- workflow() %>%
+#   add_recipe(walmart_recipe) %>%
+#   add_model(bart_model)
+# 
+# grid_of_tuning_params <- grid_regular(trees(),
+#                                       levels=5)
+# 
+# folds <- vfold_cv(combo1_1, v = 10, repeats=1)
+# 
+# folds <- vfold_cv(combo30_60, v = 10, repeats=1)
+# 
+# folds <- vfold_cv(combo23_32, v = 10, repeats=1)
+# 
+# CV_results <- walmart_workflow %>%
+#   tune_grid(resamples=folds,
+#             grid=grid_of_tuning_params,
+#             metrics=metric_set(rmse))
+# 
+# CV_results %>%
+#   show_best(metric = "rmse", n = 1)
+# 
 #####
+
+## Trying Prophet Model
+
+library(prophet)
+
+### Choose Store and Dept
+
+store <- 30
+dept <- 60
+
+store <- 23
+dept <- 32
+
+### Filter and rename to match prophet syntax
+
+sd_train <- trainData %>%
+  filter(Store==store, Dept==dept) %>%
+  rename(y=Weekly_Sales, ds=Date)
+sd_test <- testData %>%
+  filter(Store==store, Dept==dept) %>%
+  rename(ds=Date)
+
+### Fit a prophet model
+
+prophet_model <- prophet() %>%
+  add_regressor('MarkdownFlag') %>%
+  add_regressor('TotalMarkdown') %>%
+  add_regressor('CPI') %>%
+  add_regressor('Unemployment') %>%
+  fit.prophet(df=sd_train)
+
+### Predict using fitted prophet model
+
+fitted_vals <- predict(prophet_model, df=sd_train)
+test_preds <- predict(prophet_model, df=sd_test)
+
+### Plot fitted and forecast on same plot
+
+library(patchwork)
+
+graph30_60 <- ggplot() +
+  geom_line(data=sd_train, mapping=aes(x=ds, y=y, color='Data')) +
+  geom_line(data=fitted_vals, mapping=aes(x=as.Date(ds), 
+                                          y=yhat, color='Fitted')) +
+  geom_line(data=test_preds, mapping=aes(x=as.Date(ds),
+                                         y=yhat, color='Forecast')) +
+  scale_color_manual(values=c('Data'='black', 'Fitted'='blue', 
+                              'Forecast'='red')) + labs(color='')
+
+graph23_32 <- ggplot() +
+  geom_line(data=sd_train, mapping=aes(x=ds, y=y, color='Data')) +
+  geom_line(data=fitted_vals, mapping=aes(x=as.Date(ds), 
+                                          y=yhat, color='Fitted')) +
+  geom_line(data=test_preds, mapping=aes(x=as.Date(ds),
+                                         y=yhat, color='Forecast')) +
+  scale_color_manual(values=c('Data'='black', 'Fitted'='blue', 
+                              'Forecast'='red')) + labs(color='')
+
+graph30_60 + graph23_32
